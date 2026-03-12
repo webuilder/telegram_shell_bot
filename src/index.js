@@ -233,11 +233,18 @@ registerCommand('edit', '编辑文件 (用法: /edit <文件路径>)', async (ms
     return `❌ 无法访问文件: ${err.message}`;
   }
   
-  // 创建编辑会话
-  const token = createSession(filePath, userId);
+  // 检查路径安全性
+  const { isPathSafe } = require('./miniAppServer');
+  const pathCheck = isPathSafe(filePath);
+  if (!pathCheck.safe) {
+    return `❌ ${pathCheck.reason}`;
+  }
   
-  // 构建 Mini App URL
-  const editorUrl = `${MINI_APP_URL}/editor.html?file=${encodeURIComponent(displayPath)}&token=${token}&api=${MINI_APP_URL}`;
+  // 创建编辑会话
+  const session = createSession(filePath, userId);
+  
+  // 构建 Mini App URL (包含 hash 用于验证)
+  const editorUrl = `${MINI_APP_URL}/editor.html?file=${encodeURIComponent(displayPath)}&token=${session.token}&hash=${session.initDataHash}&api=${MINI_APP_URL}`;
   
   try {
     // 发送带 Web App 按钮的消息

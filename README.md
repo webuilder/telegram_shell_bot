@@ -178,6 +178,22 @@ registerCommand('hello', '打招呼', async (msg, args, bot) => {
 - 同时显示 stdout 和 stderr 输出
 - **务必配置白名单，防止未授权访问**
 
+## 安全建议
+
+Mini App 服务器暴露到公网时，请采取以下措施：
+
+1. **使用 HTTPS** - 配置 SSL 证书，防止传输被截获
+2. **设置白名单** - 只允许你的 Telegram 账号访问
+3. **限制编辑路径** - 在 `.env` 中配置 `FORBIDDEN_EDIT_PATHS` 禁止编辑敏感文件
+4. **使用反向代理** - 通过 Nginx 等反向代理暴露服务，增加安全层
+5. **定期检查日志** - 监控异常访问
+
+```env
+# 安全配置示例
+FORBIDDEN_EDIT_PATHS=/etc/passwd,/etc/shadow,.ssh/,.env
+MAX_EDIT_FILE_SIZE=10485760  # 10MB
+```
+
 ## License
 
 MIT

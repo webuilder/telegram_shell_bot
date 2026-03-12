@@ -151,6 +151,9 @@
   <script>
     let originalContent = '';
     let fileName = '';
+    let token = '';
+    let hash = '';
+    let apiBase = '';
     
     // 初始化 Telegram WebApp
     const tg = window.Telegram.WebApp;
@@ -160,11 +163,12 @@
     // 设置主题颜色
     document.body.style.backgroundColor = tg.themeParams.bg_color || '#fff';
     
-    // 从 URL 参数获取文件名和 token
+    // 从 URL 参数获取参数
     const urlParams = new URLSearchParams(window.location.search);
     fileName = urlParams.get('file') || '';
-    const token = urlParams.get('token') || '';
-    const apiBase = urlParams.get('api') || '';
+    token = urlParams.get('token') || '';
+    hash = urlParams.get('hash') || '';
+    apiBase = urlParams.get('api') || '';
     
     const filenameEl = document.getElementById('filename');
     const statusEl = document.getElementById('status');
@@ -173,7 +177,7 @@
     const loadingEl = document.getElementById('loading');
     const loadingTextEl = document.getElementById('loadingText');
     
-    if (!fileName || !token || !apiBase) {
+    if (!fileName || !token || !hash || !apiBase) {
       showError('参数错误，请重新打开');
     } else {
       filenameEl.textContent = fileName;
@@ -201,7 +205,7 @@
       showLoading('正在读取文件...');
       
       try {
-        const response = await fetch(`${apiBase}/api/file?token=${token}&file=${encodeURIComponent(fileName)}`);
+        const response = await fetch(`${apiBase}/api/file?token=${encodeURIComponent(token)}&hash=${encodeURIComponent(hash)}`);
         const data = await response.json();
         
         if (!response.ok) {
@@ -241,7 +245,7 @@
           },
           body: JSON.stringify({
             token: token,
-            file: fileName,
+            hash: hash,
             content: content
           })
         });

@@ -178,6 +178,22 @@ registerCommand('hello', 'Say hello', async (msg, args, bot) => {
 - Both stdout and stderr are displayed
 - **Always configure whitelist to prevent unauthorized access**
 
+## Security Recommendations
+
+When exposing the Mini App server to the public network, take these precautions:
+
+1. **Use HTTPS** - Configure SSL certificate to prevent transmission interception
+2. **Set whitelist** - Only allow your Telegram account to access
+3. **Restrict edit paths** - Configure `FORBIDDEN_EDIT_PATHS` in `.env` to block sensitive files
+4. **Use reverse proxy** - Expose service through Nginx for an additional security layer
+5. **Monitor logs** - Check for unusual access patterns
+
+```env
+# Security configuration example
+FORBIDDEN_EDIT_PATHS=/etc/passwd,/etc/shadow,.ssh/,.env
+MAX_EDIT_FILE_SIZE=10485760  # 10MB
+```
+
 ## License
 
 MIT
