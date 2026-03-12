@@ -78,7 +78,7 @@ npm run dev
 | 命令 | 说明 |
 |------|------|
 | `/run <命令>` | 执行命令行 |
-| `/edit <文件名>` | 编辑文件 (Mini App) |
+| `/edit <文件路径>` | 编辑文件 (支持任意路径) |
 | `/alias add <别名> <命令>` | 添加命令别名 |
 | `/alias list` | 列出所有别名 |
 | `/alias delete <别名>` | 删除别名 |
@@ -127,14 +127,17 @@ npm run dev
 
 ### 文件编辑
 
-使用 `/edit` 命令打开文件编辑器：
+使用 `/edit` 命令打开文件编辑器，支持编辑服务器上的任意文件：
 
 ```
-/edit config.json
-/edit aliases.json
+/edit config.json           # 编辑 downloads 目录中的文件
+/edit aliases.json          # 编辑 data 目录中的别名文件
+/edit /etc/nginx/nginx.conf # 编辑绝对路径文件
+/edit ~/app/config.yml      # 编辑用户目录中的文件
 ```
 
 编辑器功能：
+- 支持编辑服务器上任意路径的文本文件
 - 实时显示文件大小和行数
 - 自动检测内容变化
 - 支持保存和放弃更改

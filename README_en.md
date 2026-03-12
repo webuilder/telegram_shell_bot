@@ -78,10 +78,12 @@ npm run dev
 | Command | Description |
 |---------|-------------|
 | `/run <command>` | Execute command |
+| `/edit <file path>` | Edit file (supports any path) |
 | `/alias add <alias> <command>` | Add command alias |
 | `/alias list` | List all aliases |
 | `/alias delete <alias>` | Delete alias |
-| `/edit <filename>` | Edit file in Mini App |
+| `/file <filename>` | Retrieve a file |
+| `/list` | List saved files |
 | `/info` | Show chat info (get User ID) |
 | `/start` | Start using |
 | `/help` | Show help |
@@ -125,17 +127,22 @@ Use aliases:
 
 ### File Editing
 
-Use the Mini App editor to edit files directly:
+Use `/edit` command to open the file editor. Supports editing any file on the server:
 
 ```
-/edit config.json
-/edit aliases.json
+/edit config.json           # Edit file in downloads directory
+/edit aliases.json          # Edit aliases file in data directory
+/edit /etc/nginx/nginx.conf # Edit file with absolute path
+/edit ~/app/config.yml      # Edit file in user home directory
 ```
 
-The Mini App provides:
-- Real-time editing interface
-- Save/Cancel buttons
-- File size and line count display
+Features:
+- Edit text files at any path on the server
+- Real-time file size and line count display
+- Automatic change detection
+- Save and cancel options
+
+> **Note**: File editing requires the Mini App server to be running. Configure `MINI_APP_URL` for public access.
 
 ## Project Structure
 

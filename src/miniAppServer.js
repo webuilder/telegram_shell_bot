@@ -12,12 +12,6 @@ const crypto = require('crypto');
 const editSessions = new Map();
 const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 分钟超时
 
-// 文件访问基础路径
-const ALLOWED_BASE_PATHS = [
-  path.join(__dirname, '../downloads'),
-  path.join(__dirname, '../data')
-];
-
 // 清理过期会话
 setInterval(() => {
   const now = Date.now();
@@ -62,14 +56,6 @@ function validateSession(token, userId) {
 }
 
 /**
- * 检查文件路径是否在允许的范围内
- */
-function isPathAllowed(filePath) {
-  const resolved = path.resolve(filePath);
-  return ALLOWED_BASE_PATHS.some(base => resolved.startsWith(base));
-}
-
-/**
  * 创建并返回 Express 应用
  */
 function createMiniAppServer(bot) {
@@ -83,7 +69,7 @@ function createMiniAppServer(bot) {
   
   // 获取文件内容 API
   app.get('/api/file', (req, res) => {
-    const { token, file } = req.query;
+    const { token } = req.query;
     
     // 从 token 获取会话信息
     const session = editSessions.get(token);
@@ -91,20 +77,21 @@ function createMiniAppServer(bot) {
       return res.status(401).json({ error: '会话无效或已过期' });
     }
     
-    // 验证文件路径
     const filePath = path.resolve(session.filePath);
-    if (!isPathAllowed(filePath)) {
-      return res.status(403).json({ error: '无权访问此文件' });
-    }
     
     // 检查文件是否存在
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: '文件不存在' });
     }
     
+    // 检查是否是文件（不是目录）
+    const stats = fs.statSync(filePath);
+    if (!stats.isFile()) {
+      return res.status(400).json({ error: '不是有效的文件' });
+    }
+    
     try {
       const content = fs.readFileSync(filePath, 'utf8');
-      const stats = fs.statSync(filePath);
       res.json({
         content,
         size: stats.size,
@@ -117,7 +104,7 @@ function createMiniAppServer(bot) {
   
   // 保存文件内容 API
   app.post('/api/file', (req, res) => {
-    const { token, file, content } = req.body;
+    const { token, content } = req.body;
     
     // 从 token 获取会话信息
     const session = editSessions.get(token);
@@ -125,11 +112,7 @@ function createMiniAppServer(bot) {
       return res.status(401).json({ error: '会话无效或已过期' });
     }
     
-    // 验证文件路径
     const filePath = path.resolve(session.filePath);
-    if (!isPathAllowed(filePath)) {
-      return res.status(403).json({ error: '无权访问此文件' });
-    }
     
     try {
       // 确保目录存在
@@ -157,6 +140,5 @@ function createMiniAppServer(bot) {
 module.exports = {
   createMiniAppServer,
   createSession,
-  validateSession,
-  isPathAllowed
+  validateSession
 };

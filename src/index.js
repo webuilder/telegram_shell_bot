@@ -115,22 +115,19 @@ registerCommand('help', '显示帮助信息', async (msg, args) => {
     `📝 *消息功能*\n` +
     `• 直接发送消息与我对话\n` +
     `• 我会回复你的每条消息\n\n` +
+    `⚡ *远程命令执行*\n` +
+    `• /run <命令> - 执行命令行\n` +
+    `• /alias add/list/delete - 管理命令别名\n\n` +
     `📷 *文件功能*\n` +
-    `• 发送图片/文件，我会保存并回复\n` +
-    `• 发送 /file <文件名> 获取已保存的文件\n` +
-    `• 发送 /edit <文件名> 编辑文件\n\n` +
-    `⚡ *命令列表*\n` +
+    `• 发送图片/文件，自动保存\n` +
+    `• /edit <文件路径> - 编辑文件\n` +
+    `• /file <文件名> - 获取文件\n` +
+    `• /list - 列出已保存文件\n\n` +
+    `📋 *其他命令*\n` +
     `• /start - 开始使用\n` +
     `• /help - 显示帮助\n` +
     `• /echo <文本> - 回显文本\n` +
-    `• /run <命令> - 执行命令行 (支持别名)\n` +
-    `• /alias add <别名> <命令> - 添加别名\n` +
-    `• /alias list - 列出所有别名\n` +
-    `• /alias delete <别名> - 删除别名\n` +
-    `• /edit <文件名> - 编辑文件\n` +
-    `• /file <文件名> - 获取文件\n` +
-    `• /list - 列出已保存文件\n` +
-    `• /info - 显示聊天信息 (用于获取用户ID)`;
+    `• /info - 显示聊天信息`;
 });
 
 registerCommand('echo', '回显文本 (用法: /echo <文本>)', async (msg, args) => {
@@ -182,38 +179,69 @@ registerCommand('info', '显示当前聊天信息', async (msg, args) => {
   return info;
 });
 
-registerCommand('edit', '编辑文件 (用法: /edit <文件名>)', async (msg, args, bot) => {
+registerCommand('edit', '编辑文件 (用法: /edit <文件路径>)', async (msg, args, bot) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   
   if (!args) {
-    return '请指定要编辑的文件名，例如: /edit config.json\n\n使用 /list 查看可用文件。';
+    return '请指定要编辑的文件路径，例如:\n' +
+      '• /edit config.json (downloads 目录)\n' +
+      '• /edit /etc/nginx/nginx.conf (绝对路径)\n' +
+      '• /edit ~/app/config.yml (用户目录)\n\n' +
+      '使用 /list 查看已保存的文件。';
   }
   
-  // 构建文件路径
-  const fileName = args.trim();
-  let filePath = path.join(__dirname, '../downloads', fileName);
+  // 处理文件路径
+  let filePath = args.trim();
+  let displayPath = filePath;
+  
+  // 支持 ~ 展开为用户主目录
+  if (filePath.startsWith('~/')) {
+    filePath = path.join(process.env.HOME || '/root', filePath.slice(2));
+  }
+  
+  // 判断是否是绝对路径
+  const isAbsolutePath = path.isAbsolute(filePath);
+  
+  if (!isAbsolutePath) {
+    // 相对路径：依次检查 downloads、data 目录
+    const downloadsPath = path.join(__dirname, '../downloads', filePath);
+    const dataPath = path.join(__dirname, '../data', filePath);
+    
+    if (fs.existsSync(downloadsPath)) {
+      filePath = downloadsPath;
+    } else if (fs.existsSync(dataPath)) {
+      filePath = dataPath;
+    } else {
+      // 尝试相对于当前工作目录
+      filePath = path.resolve(filePath);
+    }
+  }
   
   // 检查文件是否存在
   if (!fs.existsSync(filePath)) {
-    // 尝试在 data 目录中查找
-    const dataFilePath = path.join(__dirname, '../data', fileName);
-    if (fs.existsSync(dataFilePath)) {
-      filePath = dataFilePath;
-    } else {
-      return `❌ 文件 "${fileName}" 不存在\n\n使用 /list 查看可用文件。`;
+    return `❌ 文件不存在: ${displayPath}\n\n提示: 使用绝对路径或确保文件在 downloads/data 目录中。`;
+  }
+  
+  // 检查是否是文件
+  try {
+    const stats = fs.statSync(filePath);
+    if (!stats.isFile()) {
+      return `❌ 这不是一个文件: ${displayPath}`;
     }
+  } catch (err) {
+    return `❌ 无法访问文件: ${err.message}`;
   }
   
   // 创建编辑会话
   const token = createSession(filePath, userId);
   
   // 构建 Mini App URL
-  const editorUrl = `${MINI_APP_URL}/editor.html?file=${encodeURIComponent(fileName)}&token=${token}&api=${MINI_APP_URL}`;
+  const editorUrl = `${MINI_APP_URL}/editor.html?file=${encodeURIComponent(displayPath)}&token=${token}&api=${MINI_APP_URL}`;
   
   try {
     // 发送带 Web App 按钮的消息
-    await bot.sendMessage(chatId, `📝 编辑文件: ${fileName}`, {
+    await bot.sendMessage(chatId, `📝 编辑文件: ${displayPath}`, {
       reply_markup: {
         inline_keyboard: [[
           {
