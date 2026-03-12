@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { handleCommands, registerCommand } = require('./commands');
 const { handleFileMessage, handlePhotoMessage, formatBytes } = require('./fileHandler');
+const { createMiniAppServer, createSession } = require('./miniAppServer');
 
 // 配置
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -14,6 +15,10 @@ const WHITELIST_USER_IDS = process.env.WHITELIST_USER_IDS
   ? process.env.WHITELIST_USER_IDS.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
   : [];
 const MAX_OUTPUT_FILE_SIZE = parseInt(process.env.MAX_OUTPUT_FILE_SIZE) || 102400; // 默认 100KB
+
+// Mini App 配置
+const MINI_APP_PORT = parseInt(process.env.MINI_APP_PORT) || 3000;
+const MINI_APP_URL = process.env.MINI_APP_URL || `http://localhost:${MINI_APP_PORT}`;
 
 // 别名存储
 const ALIAS_FILE = path.join(__dirname, '../data/aliases.json');
@@ -85,6 +90,12 @@ bot = new TelegramBot(TOKEN, botOptions);
 
 console.log('Telegram Bot 已启动!');
 
+// 启动 Mini App 服务器
+const miniApp = createMiniAppServer(bot);
+miniApp.listen(MINI_APP_PORT, () => {
+  console.log(`Mini App 服务器已启动: ${MINI_APP_URL}`);
+});
+
 // 白名单状态
 if (WHITELIST_USER_IDS.length > 0) {
   console.log(`白名单模式已启用，允许的用户ID: ${WHITELIST_USER_IDS.join(', ')}`);
@@ -106,7 +117,8 @@ registerCommand('help', '显示帮助信息', async (msg, args) => {
     `• 我会回复你的每条消息\n\n` +
     `📷 *文件功能*\n` +
     `• 发送图片/文件，我会保存并回复\n` +
-    `• 发送 /file <文件名> 获取已保存的文件\n\n` +
+    `• 发送 /file <文件名> 获取已保存的文件\n` +
+    `• 发送 /edit <文件名> 编辑文件\n\n` +
     `⚡ *命令列表*\n` +
     `• /start - 开始使用\n` +
     `• /help - 显示帮助\n` +
@@ -115,6 +127,7 @@ registerCommand('help', '显示帮助信息', async (msg, args) => {
     `• /alias add <别名> <命令> - 添加别名\n` +
     `• /alias list - 列出所有别名\n` +
     `• /alias delete <别名> - 删除别名\n` +
+    `• /edit <文件名> - 编辑文件\n` +
     `• /file <文件名> - 获取文件\n` +
     `• /list - 列出已保存文件\n` +
     `• /info - 显示聊天信息 (用于获取用户ID)`;
@@ -167,6 +180,53 @@ registerCommand('info', '显示当前聊天信息', async (msg, args) => {
   if (user.language_code) info += `🌐 语言: ${user.language_code}\n`;
   
   return info;
+});
+
+registerCommand('edit', '编辑文件 (用法: /edit <文件名>)', async (msg, args, bot) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  if (!args) {
+    return '请指定要编辑的文件名，例如: /edit config.json\n\n使用 /list 查看可用文件。';
+  }
+  
+  // 构建文件路径
+  const fileName = args.trim();
+  let filePath = path.join(__dirname, '../downloads', fileName);
+  
+  // 检查文件是否存在
+  if (!fs.existsSync(filePath)) {
+    // 尝试在 data 目录中查找
+    const dataFilePath = path.join(__dirname, '../data', fileName);
+    if (fs.existsSync(dataFilePath)) {
+      filePath = dataFilePath;
+    } else {
+      return `❌ 文件 "${fileName}" 不存在\n\n使用 /list 查看可用文件。`;
+    }
+  }
+  
+  // 创建编辑会话
+  const token = createSession(filePath, userId);
+  
+  // 构建 Mini App URL
+  const editorUrl = `${MINI_APP_URL}/editor.html?file=${encodeURIComponent(fileName)}&token=${token}&api=${MINI_APP_URL}`;
+  
+  try {
+    // 发送带 Web App 按钮的消息
+    await bot.sendMessage(chatId, `📝 编辑文件: ${fileName}`, {
+      reply_markup: {
+        inline_keyboard: [[
+          {
+            text: '📝 打开编辑器',
+            web_app: { url: editorUrl }
+          }
+        ]]
+      }
+    });
+    return null;
+  } catch (err) {
+    return `❌ 打开编辑器失败: ${err.message}`;
+  }
 });
 
 registerCommand('run', '执行命令行 (用法: /run <命令>)', async (msg, args, bot) => {

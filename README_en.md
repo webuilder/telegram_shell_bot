@@ -45,8 +45,12 @@ PROXY_URL=http://127.0.0.1:7890
 WHITELIST_USER_IDS=123456789
 
 # Maximum output file size (bytes), default 100KB
-# When command output exceeds Telegram message limit, it will be saved as a file
 MAX_OUTPUT_FILE_SIZE=102400
+
+# Mini App Config (for file editing feature)
+MINI_APP_PORT=3000
+# If accessing via public network, change to actual address
+MINI_APP_URL=http://your-server:3000
 ```
 
 ### 3. Get Bot Token
@@ -77,6 +81,7 @@ npm run dev
 | `/alias add <alias> <command>` | Add command alias |
 | `/alias list` | List all aliases |
 | `/alias delete <alias>` | Delete alias |
+| `/edit <filename>` | Edit file in Mini App |
 | `/info` | Show chat info (get User ID) |
 | `/start` | Start using |
 | `/help` | Show help |
@@ -116,18 +121,36 @@ Use aliases:
 - Send images/files to the Bot and they will be saved automatically
 - `/list` to view saved files
 - `/file <filename>` to retrieve a file
+- `/edit <filename>` to open Mini App editor
+
+### File Editing
+
+Use the Mini App editor to edit files directly:
+
+```
+/edit config.json
+/edit aliases.json
+```
+
+The Mini App provides:
+- Real-time editing interface
+- Save/Cancel buttons
+- File size and line count display
 
 ## Project Structure
 
 ```
 telegram-bot/
 ├── src/
-│   ├── index.js        # Main entry point
-│   ├── commands.js     # Command handler module
-│   └── fileHandler.js  # File handler module
-├── data/aliases.json   # Alias storage
-├── downloads/          # File storage directory
-├── .env                # Environment configuration
+│   ├── index.js         # Main entry point
+│   ├── commands.js      # Command handler module
+│   ├── fileHandler.js   # File handler module
+│   └── miniAppServer.js # Mini App server module
+├── public/
+│   └── editor.html      # Mini App editor page
+├── data/aliases.json    # Alias storage
+├── downloads/           # File storage directory
+├── .env                 # Environment configuration
 └── package.json
 ```
 

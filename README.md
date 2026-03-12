@@ -45,8 +45,12 @@ PROXY_URL=http://127.0.0.1:7890
 WHITELIST_USER_IDS=123456789
 
 # 命令输出文件最大长度 (字节)，默认 100KB
-# 当命令输出超过 Telegram 消息限制时，会保存为文件发送
 MAX_OUTPUT_FILE_SIZE=102400
+
+# Mini App 配置 (用于文件编辑功能)
+MINI_APP_PORT=3000
+# 如果通过公网访问，请修改为实际地址
+MINI_APP_URL=http://your-server:3000
 ```
 
 ### 3. 获取 Bot Token
@@ -74,9 +78,12 @@ npm run dev
 | 命令 | 说明 |
 |------|------|
 | `/run <命令>` | 执行命令行 |
+| `/edit <文件名>` | 编辑文件 (Mini App) |
 | `/alias add <别名> <命令>` | 添加命令别名 |
 | `/alias list` | 列出所有别名 |
 | `/alias delete <别名>` | 删除别名 |
+| `/file <文件名>` | 获取文件 |
+| `/list` | 列出已保存文件 |
 | `/info` | 显示聊天信息 (获取用户ID) |
 | `/start` | 开始使用 |
 | `/help` | 显示帮助 |
@@ -116,18 +123,38 @@ npm run dev
 - 发送图片/文件给 Bot 会自动保存
 - `/list` 查看已保存文件
 - `/file <文件名>` 获取文件
+- `/edit <文件名>` 在 Mini App 中编辑文件
+
+### 文件编辑
+
+使用 `/edit` 命令打开文件编辑器：
+
+```
+/edit config.json
+/edit aliases.json
+```
+
+编辑器功能：
+- 实时显示文件大小和行数
+- 自动检测内容变化
+- 支持保存和放弃更改
+
+> **注意**: 文件编辑功能需要 Mini App 服务器运行。如果需要公网访问，请配置 `MINI_APP_URL` 为你的服务器公网地址。
 
 ## 项目结构
 
 ```
 telegram-bot/
 ├── src/
-│   ├── index.js        # 主程序入口
-│   ├── commands.js     # 命令处理模块
-│   └── fileHandler.js  # 文件处理模块
-├── data/aliases.json   # 别名存储
-├── downloads/          # 文件存储目录
-├── .env                # 环境配置
+│   ├── index.js         # 主程序入口
+│   ├── commands.js      # 命令处理模块
+│   ├── fileHandler.js   # 文件处理模块
+│   └── miniAppServer.js # Mini App 服务器
+├── public/
+│   └── editor.html      # 文件编辑器页面
+├── data/aliases.json    # 别名存储
+├── downloads/           # 文件存储目录
+├── .env                 # 环境配置
 └── package.json
 ```
 
