@@ -43,6 +43,10 @@ PROXY_URL=http://127.0.0.1:7890
 
 # ⚠️ 用户白名单 (必填！用逗号分隔的用户ID)
 WHITELIST_USER_IDS=123456789
+
+# 命令输出文件最大长度 (字节)，默认 100KB
+# 当命令输出超过 Telegram 消息限制时，会保存为文件发送
+MAX_OUTPUT_FILE_SIZE=102400
 ```
 
 ### 3. 获取 Bot Token
@@ -140,7 +144,8 @@ registerCommand('hello', '打招呼', async (msg, args, bot) => {
 ## 注意事项
 
 - 命令执行超时限制：30 秒
-- 输出长度限制：约 3800 字符（Telegram 消息限制）
+- 输出过长时自动保存为文件发送（可通过 `MAX_OUTPUT_FILE_SIZE` 配置文件大小限制）
+- 同时显示 stdout 和 stderr 输出
 - **务必配置白名单，防止未授权访问**
 
 ## License

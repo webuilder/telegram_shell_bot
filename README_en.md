@@ -43,6 +43,10 @@ PROXY_URL=http://127.0.0.1:7890
 
 # ⚠️ User whitelist (REQUIRED! Comma-separated user IDs)
 WHITELIST_USER_IDS=123456789
+
+# Maximum output file size (bytes), default 100KB
+# When command output exceeds Telegram message limit, it will be saved as a file
+MAX_OUTPUT_FILE_SIZE=102400
 ```
 
 ### 3. Get Bot Token
@@ -140,7 +144,8 @@ registerCommand('hello', 'Say hello', async (msg, args, bot) => {
 ## Notes
 
 - Command execution timeout: 30 seconds
-- Output length limit: ~3800 characters (Telegram message limit)
+- Long output is automatically saved as a file (configurable via `MAX_OUTPUT_FILE_SIZE`)
+- Both stdout and stderr are displayed
 - **Always configure whitelist to prevent unauthorized access**
 
 ## License

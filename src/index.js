@@ -5,7 +5,7 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { handleCommands, registerCommand } = require('./commands');
-const { handleFileMessage, handlePhotoMessage } = require('./fileHandler');
+const { handleFileMessage, handlePhotoMessage, formatBytes } = require('./fileHandler');
 
 // 配置
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -13,6 +13,7 @@ const PROXY_URL = process.env.PROXY_URL;
 const WHITELIST_USER_IDS = process.env.WHITELIST_USER_IDS
   ? process.env.WHITELIST_USER_IDS.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
   : [];
+const MAX_OUTPUT_FILE_SIZE = parseInt(process.env.MAX_OUTPUT_FILE_SIZE) || 102400; // 默认 100KB
 
 // 别名存储
 const ALIAS_FILE = path.join(__dirname, '../data/aliases.json');
@@ -188,32 +189,73 @@ registerCommand('run', '执行命令行 (用法: /run <命令>)', async (msg, ar
   return new Promise((resolve) => {
     exec(actualCommand, { 
       timeout: 30000,  // 30秒超时
-      maxBuffer: 1024 * 1024  // 1MB 输出缓冲
-    }, (error, stdout, stderr) => {
-      let result = '';
-      
-      if (error) {
-        if (error.killed) {
-          result = `❌ 命令执行超时 (30秒)`;
-        } else {
-          result = `❌ 执行失败:\n\`\`\`\n${error.message}\n\`\`\``;
-        }
-      } else if (stderr) {
-        result = `⚠️ 命令输出 (stderr):\n\`\`\`\n${stderr}\n\`\`\``;
-      } else {
-        const output = stdout || '(无输出)';
-        // Telegram 消息长度限制约 4096 字符
-        if (output.length > 3800) {
-          result = `✅ 执行成功 (输出已截断):\n\`\`\`\n${output.substring(0, 3800)}\n...\n\`\`\``;
-        } else {
-          result = `✅ 执行成功:\n\`\`\`\n${output}\n\`\`\``;
-        }
-      }
-      
+      maxBuffer: 10 * 1024 * 1024  // 10MB 输出缓冲
+    }, async (error, stdout, stderr) => {
       // 删除等待消息
       bot.deleteMessage(chatId, waitingMsg.message_id).catch(() => {});
       
-      resolve(result);
+      if (error) {
+        if (error.killed) {
+          resolve(`❌ 命令执行超时 (30秒)`);
+        } else {
+          resolve(`❌ 执行失败:\n\`\`\`\n${error.message}\n\`\`\``);
+        }
+        return;
+      }
+      
+      // 合并 stdout 和 stderr
+      let output = '';
+      if (stdout && stderr) {
+        output = `=== STDOUT ===\n${stdout}\n\n=== STDERR ===\n${stderr}`;
+      } else {
+        output = stdout || stderr || '(无输出)';
+      }
+      const outputBytes = Buffer.byteLength(output, 'utf8');
+      
+      // Telegram 消息长度限制约 4096 字节
+      if (outputBytes > 3500) {
+        // 输出太长，保存为文件发送
+        try {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const fileName = `output_${timestamp}.txt`;
+          const outputDir = path.join(__dirname, '../downloads');
+          
+          // 确保目录存在
+          if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+          }
+          
+          const filePath = path.join(outputDir, fileName);
+          
+          // 限制文件大小
+          let outputToSave = output;
+          if (outputBytes > MAX_OUTPUT_FILE_SIZE) {
+            // 需要截断到指定字节数
+            outputToSave = Buffer.from(output, 'utf8').slice(0, MAX_OUTPUT_FILE_SIZE).toString('utf8');
+            outputToSave += '\n\n... (输出已截断，达到文件大小限制)';
+          }
+          
+          fs.writeFileSync(filePath, outputToSave, 'utf8');
+          
+          // 发送文件
+          await bot.sendDocument(chatId, filePath, {
+            caption: `✅ 执行成功，输出过长已保存为文件\n📊 大小: ${formatBytes(Buffer.byteLength(outputToSave, 'utf8'))}`
+          });
+          
+          resolve(null); // 不发送额外文本
+        } catch (err) {
+          console.error('保存输出文件失败:', err);
+          resolve(`❌ 保存输出文件失败: ${err.message}`);
+        }
+      } else {
+        let prefix = '✅ 执行成功';
+        if (stdout && stderr) {
+          prefix = '✅ 执行成功 (含 stderr)';
+        } else if (stderr && !stdout) {
+          prefix = '⚠️ 命令输出 (stderr)';
+        }
+        resolve(`${prefix}:\n\`\`\`\n${output}\n\`\`\``);
+      }
     });
   });
 });

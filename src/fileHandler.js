@@ -149,5 +149,6 @@ function formatBytes(bytes) {
 module.exports = {
   handlePhotoMessage,
   handleFileMessage,
-  downloadFile
+  downloadFile,
+  formatBytes
 };
